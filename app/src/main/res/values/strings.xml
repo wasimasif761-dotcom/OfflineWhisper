@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">OfflineWhisper</string>
+    <string name="record_audio">Record Audio</string>
+    <string name="transcribe_file">Transcribe Audio File</string>
+    <string name="model_status">Whisper Model</string>
+    <string name="download_model">Download Model</string>
+    <string name="offline_ready">100% Offline Ready</string>
+</resources>

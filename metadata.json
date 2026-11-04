@@ -1,0 +1,6 @@
+{
+  "name": "OfflineWhisper",
+  "description": "100% offline speech-to-text transcription using OpenAI Whisper on-device via whisper.cpp with live mic recording and audio file transcription.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,31 @@
+# Gradle & Build Output
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# C++ & NDK Build Outputs
+.cxx/
+.externalNativeBuild/
+app/.cxx/
+app/.externalNativeBuild/
+
+# Whisper Large Models (Keep Git repo lightweight, download via app or Hugging Face)
+*.bin
+*.ggml
+app/src/main/assets/models/*.bin
+models/
+
+# Android Studio & IntelliJ IDEA
+*.iml
+.idea/
+.kotlin/
+captures/
+.DS_Store
+
+# Keystores & Environment
+local.properties
+.env
+debug.keystore
+*.jks
