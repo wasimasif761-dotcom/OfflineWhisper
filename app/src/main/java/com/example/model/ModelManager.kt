@@ -121,8 +121,8 @@ class ModelManager(private val context: Context) {
     fun refreshInstalledModels() {
         val dir = getModelsDir()
         val files = dir.listFiles()?.filter { it.isFile && it.length() > 1024 * 1024 }?.map { it.name } ?: emptyList()
-        _installedModels.value = files
-        if (_activeModelId.value == null || !files.contains(_activeModelId.value)) {
+        val current = _activeModelId.value
+        if (current == null || !files.contains(current)) {
             _activeModelId.value = files.firstOrNull() ?: "ggml-base.bin"
         }
     }
