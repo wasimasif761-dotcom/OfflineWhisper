@@ -27,5 +27,4 @@ captures/
 # Keystores & Environment
 local.properties
 .env
-debug.keystore
 *.jks
