@@ -62,6 +62,9 @@ class WhisperContext private constructor(private var ptr: Long) {
 
     companion object {
         fun createContextFromFile(filePath: String): WhisperContext {
+            if (!WhisperLib.isLoaded) {
+                throw IllegalStateException("Whisper native library failed to load: ${WhisperLib.loadError}")
+            }
             val file = File(filePath)
             if (!file.exists()) {
                 throw IllegalArgumentException("Model file does not exist at $filePath")
@@ -74,6 +77,9 @@ class WhisperContext private constructor(private var ptr: Long) {
         }
 
         fun createContextFromInputStream(stream: InputStream): WhisperContext {
+            if (!WhisperLib.isLoaded) {
+                throw IllegalStateException("Whisper native library failed to load: ${WhisperLib.loadError}")
+            }
             val ptr = WhisperLib.initContextFromInputStream(stream)
             if (ptr == 0L) {
                 throw RuntimeException("Couldn't initialize whisper context from input stream")
@@ -82,6 +88,9 @@ class WhisperContext private constructor(private var ptr: Long) {
         }
 
         fun createContextFromAsset(assetManager: AssetManager, assetPath: String): WhisperContext {
+            if (!WhisperLib.isLoaded) {
+                throw IllegalStateException("Whisper native library failed to load: ${WhisperLib.loadError}")
+            }
             val ptr = WhisperLib.initContextFromAsset(assetManager, assetPath)
             if (ptr == 0L) {
                 throw RuntimeException("Couldn't initialize whisper context from asset: $assetPath")
@@ -90,46 +99,69 @@ class WhisperContext private constructor(private var ptr: Long) {
         }
 
         fun getSystemInfo(): String {
-            return WhisperLib.getSystemInfo()
+            return if (WhisperLib.isLoaded) WhisperLib.getSystemInfo() else "Native Whisper Not Loaded"
         }
     }
 }
 
 internal class WhisperLib {
     companion object {
+        var isLoaded = false
+            private set
+        var loadError: String? = null
+            private set
+
         init {
-            val primaryAbi = if (Build.SUPPORTED_ABIS.isNotEmpty()) Build.SUPPORTED_ABIS[0] else "unknown"
-            Log.d(LOG_TAG, "Primary ABI: $primaryAbi")
-
-            var loadV8fp16 = false
-            var loadVfpv4 = false
-
-            if (primaryAbi == "arm64-v8a") {
-                val cpu = cpuInfo()
-                if (cpu != null && cpu.contains("fphp")) {
-                    loadV8fp16 = true
-                }
-            } else if (primaryAbi == "armeabi-v7a") {
-                val cpu = cpuInfo()
-                if (cpu != null && cpu.contains("vfpv4")) {
-                    loadVfpv4 = true
-                }
-            }
-
             try {
-                if (loadV8fp16) {
-                    Log.d(LOG_TAG, "Loading libwhisper_v8fp16_va.so")
-                    System.loadLibrary("whisper_v8fp16_va")
-                } else if (loadVfpv4) {
-                    Log.d(LOG_TAG, "Loading libwhisper_vfpv4.so")
-                    System.loadLibrary("whisper_vfpv4")
-                } else {
-                    Log.d(LOG_TAG, "Loading libwhisper.so")
-                    System.loadLibrary("whisper")
+                // Pre-load dynamic helper libraries if present
+                val helperLibs = listOf("omp", "ggml-base", "ggml-cpu", "ggml")
+                for (lib in helperLibs) {
+                    try {
+                        System.loadLibrary(lib)
+                        Log.d(LOG_TAG, "Loaded helper library: lib$lib.so")
+                    } catch (_: Throwable) {
+                        // Statically linked or not present, ignore safely
+                    }
                 }
-            } catch (e: UnsatisfiedLinkError) {
-                Log.w(LOG_TAG, "Failed to load optimized whisper library, falling back to libwhisper.so", e)
-                System.loadLibrary("whisper")
+
+                val primaryAbi = if (Build.SUPPORTED_ABIS.isNotEmpty()) Build.SUPPORTED_ABIS[0] else "unknown"
+                Log.d(LOG_TAG, "Primary ABI: $primaryAbi")
+
+                var loaded = false
+                val cpu = cpuInfo() ?: ""
+
+                // 1. Try architecture-optimized library first if supported
+                if (primaryAbi == "arm64-v8a" && cpu.contains("fphp")) {
+                    try {
+                        Log.d(LOG_TAG, "Attempting to load libwhisper_v8fp16_va.so...")
+                        System.loadLibrary("whisper_v8fp16_va")
+                        loaded = true
+                    } catch (t: Throwable) {
+                        Log.w(LOG_TAG, "Optimized v8fp16 library load failed, will fallback: ${t.message}")
+                    }
+                } else if (primaryAbi == "armeabi-v7a" && cpu.contains("vfpv4")) {
+                    try {
+                        Log.d(LOG_TAG, "Attempting to load libwhisper_vfpv4.so...")
+                        System.loadLibrary("whisper_vfpv4")
+                        loaded = true
+                    } catch (t: Throwable) {
+                        Log.w(LOG_TAG, "Optimized vfpv4 library load failed, will fallback: ${t.message}")
+                    }
+                }
+
+                // 2. Load standard libwhisper.so as reliable default
+                if (!loaded) {
+                    Log.d(LOG_TAG, "Loading standard libwhisper.so...")
+                    System.loadLibrary("whisper")
+                    loaded = true
+                }
+
+                isLoaded = loaded
+                Log.i(LOG_TAG, "Whisper native libraries loaded successfully!")
+            } catch (t: Throwable) {
+                Log.e(LOG_TAG, "Fatal error initializing Whisper native libraries", t)
+                isLoaded = false
+                loadError = t.localizedMessage ?: t.toString()
             }
         }
 

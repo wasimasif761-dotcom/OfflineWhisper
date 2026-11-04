@@ -12,7 +12,10 @@ import com.example.ui.theme.OfflineWhisperTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        try {
+            enableEdgeToEdge()
+        } catch (_: Throwable) {}
+
         setContent {
             OfflineWhisperTheme {
                 val viewModel: MainViewModel = viewModel()

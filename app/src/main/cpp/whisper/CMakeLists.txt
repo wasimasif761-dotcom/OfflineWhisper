@@ -16,6 +16,10 @@ set(
 
 find_library(LOG_LIB log)
 
+# Force static libraries for GGML so everything is statically linked into a single, self-contained libwhisper.so
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static ggml libraries" FORCE)
+set(GGML_OPENMP OFF CACHE BOOL "Use native ggml threading instead of libomp" FORCE)
+
 # Add ggml subdirectory
 add_subdirectory(${WHISPER_LIB_DIR}/ggml ggml_build)
 
